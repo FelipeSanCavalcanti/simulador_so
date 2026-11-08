@@ -32,6 +32,7 @@ cd /caminho                 Navegar entre diretórios
 pwd                         Mostrar diretório atual
 tree                        Exibir árvore completa
 fs_status                   Diagnóstico e mapa do disco
+io_algorithm SSTF       Selecionar algoritmo de E/S
 help                        Mostrar comandos
 exit                        Encerrar simulador
 ==============================
@@ -83,6 +84,8 @@ def main():
                 fs.show_tree()
             elif command == "fs_status":
                 fs.fs_status()
+            elif command == "io_algorithm":
+                fs.set_io_algorithm(parts[1]) 
             else:
                 print(f"Comando '{command}' não reconhecido. Digite 'help'.")
 

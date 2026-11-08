@@ -3,13 +3,18 @@ import posixpath
 
 from fs_simulador.disk import Disk
 from fs_simulador.node import Node
-
+from fs_simulador.io_scheduler import DiskScheduler
 
 class FileSystem:
     """Gerencia a árvore de diretórios e arquivos."""
 
     def __init__(self):
         self.disk = Disk(block_size=4096, total_blocks=16)
+        self.scheduler = DiskScheduler(
+            total_tracks=self.disk.total_blocks,
+            head_position=0
+        )
+        self.io_algorithm = "SSTF"
         self.root = Node("/", "DIR")
         self.current_path = "/"
 
@@ -117,12 +122,21 @@ class FileSystem:
         parent.children[name] = node
         print(f"Arquivo '{name}' criado com sucesso.")
 
+        self.perform_io(
+        "ESCRITA",
+        [node.inode_block] + node.data_blocks
+        )
     # ---------- Ler ----------
     def read_file(self, path):
         node = self.resolve(path)
 
         if not node.is_file():
             raise ValueError("O caminho não é um arquivo.")
+
+        self.perform_io(
+        "LEITURA",
+        [node.inode_block] + node.data_blocks
+        )
 
         print(f"\nArquivo: {node.name}")
         print(f"Caminho: {self.get_path(node)}")
@@ -157,6 +171,10 @@ class FileSystem:
         node.size = new_size
         print("Arquivo atualizado com sucesso.")
 
+        self.perform_io(
+        "ESCRITA",
+        [node.inode_block] + node.data_blocks
+        )
     # ---------- Excluir ----------
     def remove_file(self, path):
         node = self.resolve(path)
@@ -281,3 +299,33 @@ class FileSystem:
                 result.extend(self._list_files(child))
 
         return result
+
+def perform_io(self, operation, blocks):
+    """Gera requisições de E/S para os blocos do disco."""
+
+    if not blocks:
+        print("\nNenhuma requisição de E/S necessária.")
+        return
+
+    print(f"\n[E/S - {operation}]")
+    print(f"Blocos solicitados: {blocks}")
+
+    result = self.scheduler.schedule(
+        blocks,
+        algorithm=self.io_algorithm
+    )
+
+    print(f"Operação de {operation} concluída.")
+
+    return result
+def set_io_algorithm(self, algorithm):
+    algorithm = algorithm.upper()
+
+    valid_algorithms = ["FCFS", "SSTF", "SCAN", "C-SCAN"]
+
+    if algorithm not in valid_algorithms:
+        raise ValueError("Algoritmo inválido.")
+
+    self.io_algorithm = algorithm
+
+    print(f"Algoritmo de E/S alterado para {algorithm}.")
