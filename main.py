@@ -2,6 +2,7 @@ import re
 import shlex
 
 from fs_simulador.filesystem import FileSystem
+from fs_simulador.raid import RAID5Controller
 
 
 def parse_size(value):
@@ -22,7 +23,7 @@ def show_help():
     print("""
 ========== COMANDOS ==========
 mkdir /caminho              Criar diretório
-create /caminho 10KB        Criar arquivo
+create /caminho 10KB        Criar arquivo (e distribuir no RAID 5)
 read /caminho               Ler informações do arquivo
 update /caminho 20KB        Atualizar tamanho do arquivo
 rm /caminho                 Excluir arquivo
@@ -32,7 +33,8 @@ cd /caminho                 Navegar entre diretórios
 pwd                         Mostrar diretório atual
 tree                        Exibir árvore completa
 fs_status                   Diagnóstico e mapa do disco
-io_algorithm SSTF       Selecionar algoritmo de E/S
+io_algorithm SSTF           Selecionar algoritmo de E/S
+fail_disk 2                 Simular falha física no disco 1, 2 ou 3
 help                        Mostrar comandos
 exit                        Encerrar simulador
 ==============================
@@ -41,6 +43,8 @@ exit                        Encerrar simulador
 
 def main():
     fs = FileSystem()
+    # Instancia a controladora RAID
+    raid = RAID5Controller()
 
     print("======================================")
     print("   SIMULADOR DE SISTEMA DE ARQUIVOS")
@@ -65,7 +69,17 @@ def main():
             elif command == "mkdir":
                 fs.mkdir(parts[1])
             elif command == "create":
-                fs.create_file(parts[1], parse_size(parts[2]))
+                # 1. Cria o arquivo na árvore (isso já executa o seu perform_io do escalonador)
+                caminho = parts[1]
+                tamanho = parse_size(parts[2])
+                fs.create_file(caminho, tamanho)
+                
+                # 2. Localiza o arquivo recém-criado para pegar os blocos alocados
+                node_criado = fs.resolve(caminho)
+                
+                # 3. Dispara a controladora RAID para distribuir os dados e calcular a paridade
+                raid.write_stripe(caminho, node_criado.data_blocks)
+                
             elif command == "read":
                 fs.read_file(parts[1])
             elif command == "update":
@@ -85,7 +99,12 @@ def main():
             elif command == "fs_status":
                 fs.fs_status()
             elif command == "io_algorithm":
-                fs.set_io_algorithm(parts[1]) 
+                fs.set_io_algorithm(parts[1])
+            
+            # Novo comando para testar a Etapa 2 (Recuperação XOR)
+            elif command == "fail_disk":
+                raid.simulate_failure(int(parts[1]))
+            
             else:
                 print(f"Comando '{command}' não reconhecido. Digite 'help'.")
 

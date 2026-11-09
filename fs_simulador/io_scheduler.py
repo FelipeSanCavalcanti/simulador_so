@@ -83,9 +83,9 @@ class DiskScheduler:
     def schedule(self, requests, algorithm="SSTF", direction="right"):
         self.validate_requests(requests)
 
-        movement = self.calculate_movement(path)
+        #movement = self.calculate_movement(path)
         
-        self.head_position = path[-1]
+        #self.head_position = path[-1]
 
         algorithms = {
             "FCFS": self.fcfs,

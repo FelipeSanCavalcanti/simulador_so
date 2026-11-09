@@ -300,32 +300,32 @@ class FileSystem:
 
         return result
 
-def perform_io(self, operation, blocks):
-    """Gera requisições de E/S para os blocos do disco."""
+    def perform_io(self, operation, blocks):
+        """Gera requisições de E/S para os blocos do disco."""
 
-    if not blocks:
-        print("\nNenhuma requisição de E/S necessária.")
-        return
+        if not blocks:
+            print("\nNenhuma requisição de E/S necessária.")
+            return
 
-    print(f"\n[E/S - {operation}]")
-    print(f"Blocos solicitados: {blocks}")
+        print(f"\n[E/S - {operation}]")
+        print(f"Blocos solicitados: {blocks}")
 
-    result = self.scheduler.schedule(
-        blocks,
-        algorithm=self.io_algorithm
-    )
+        result = self.scheduler.schedule(
+            blocks,
+            algorithm=self.io_algorithm
+        )
 
-    print(f"Operação de {operation} concluída.")
+        print(f"Operação de {operation} concluída.")
 
-    return result
-def set_io_algorithm(self, algorithm):
-    algorithm = algorithm.upper()
+        return result
+    def set_io_algorithm(self, algorithm):
+        algorithm = algorithm.upper()
 
-    valid_algorithms = ["FCFS", "SSTF", "SCAN", "C-SCAN"]
+        valid_algorithms = ["FCFS", "SSTF", "SCAN", "C-SCAN"]
 
-    if algorithm not in valid_algorithms:
-        raise ValueError("Algoritmo inválido.")
+        if algorithm not in valid_algorithms:
+            raise ValueError("Algoritmo inválido.")
 
-    self.io_algorithm = algorithm
+        self.io_algorithm = algorithm
 
-    print(f"Algoritmo de E/S alterado para {algorithm}.")
+        print(f"Algoritmo de E/S alterado para {algorithm}.")
