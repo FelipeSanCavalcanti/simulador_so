@@ -24,7 +24,9 @@ class Disk:
         for index in selected:
             self.blocks[index] = {
                 "node": node,
-                "type": block_type
+                "type": block_type,
+                "content": None,
+                "checksum": None,
             }
 
         return selected
@@ -66,7 +68,8 @@ class Disk:
                     self.block_size,
                     node.size - ((position - 1) * self.block_size)
                 )
+                lock = " [CRIPTOGRAFADO]" if node.encrypted else ""
                 print(
                     f"Bloco {index:02d}: [DADO] {path} "
-                    f"(Bloco {position} - {occupied} bytes ocupados)"
+                    f"(Bloco {position} - {occupied} bytes ocupados){lock}"
                 )

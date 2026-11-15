@@ -42,7 +42,7 @@ class DiskScheduler:
         """Move até a extremidade e depois inverte a direção."""
         if not requests:
             return []
-        
+
         if direction == "right":
             right = sorted(t for t in requests if t >= self.head_position)
             left = sorted(
@@ -62,7 +62,7 @@ class DiskScheduler:
         """Atende em uma direção e retorna ao início sem atender na volta."""
         if not requests:
             return []
-        
+
         if direction == "right":
             right = sorted(t for t in requests if t >= self.head_position)
             left = sorted(t for t in requests if t < self.head_position)
@@ -80,12 +80,8 @@ class DiskScheduler:
 
         return left + [0, self.total_tracks - 1] + right
 
-    def schedule(self, requests, algorithm="SSTF", direction="right"):
+    def schedule(self, requests, algorithm="SSTF", direction="right", quiet=False):
         self.validate_requests(requests)
-
-        #movement = self.calculate_movement(path)
-        
-        #self.head_position = path[-1]
 
         algorithms = {
             "FCFS": self.fcfs,
@@ -103,12 +99,13 @@ class DiskScheduler:
 
         movement = self.calculate_movement(path)
 
-        print("\n========== ESCALONAMENTO DE DISCO ==========")
-        print(f"Algoritmo: {algorithm}")
-        print(f"Posição inicial: {self.head_position}")
-        print(f"Ordem de movimentação: {' -> '.join(map(str, path))}")
-        print(f"Deslocamento total: {movement} blocos")
-        print("============================================")
+        if not quiet:
+            print("\n========== ESCALONAMENTO DE DISCO ==========")
+            print(f"Algoritmo: {algorithm}")
+            print(f"Posição inicial: {self.head_position}")
+            print(f"Ordem de movimentação: {' -> '.join(map(str, path))}")
+            print(f"Deslocamento total: {movement} blocos")
+            print("============================================")
 
         return {
             "algorithm": algorithm,
