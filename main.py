@@ -5,6 +5,7 @@ import shlex
 from fs_simulador.ambiente import bootstrap
 from fs_simulador.antivirus import AntivirusScanner
 from fs_simulador.filesystem import FileSystem
+from fs_simulador.memory_manager import MemoryManager
 from fs_simulador.raid import RAID5Controller
 from fs_simulador.security import (
     AccessDenied,
@@ -88,6 +89,17 @@ decrypt_file <p> --key "K"      Descriptografar e exibir (valida SHA-256)
 antivirus_scan [caminho]        Varredura de integridade + assinaturas
 tamper_block <n> --content "X"  [MODO_KERNEL] Adulterar bloco (demonstração)
 security_log                    Registro de auditoria da sessão
+
+========== ETAPA 4: GERENCIAMENTO DE MEMÓRIA ==========
+create_process --name "P" --size 512KB --type <critical|normal>  Alocar processo (Reservada ou Virtual)
+terminate_process --name "P"                                     Finalizar processo e liberar memória
+memory_status [--reserved|--virtual]                             Mapa da RAM, fragmentação e Page Faults
+memory_compact --reserved                                        [MODO_KERNEL] Compactar Área Reservada
+translate_address --process P --page <n>                         Traduzir Página Lógica -> Moldura Física
+execute_step --process P --instruction "LOAD_DATA Página <n>"    Simular acesso à memória / Page Fault / Swap
+page_algorithm <LRU|SECOND_CHANCE>                               Selecionar política de substituição
+
+========== GERAL ==========
 help                            Mostrar comandos
 exit                            Encerrar simulador
 ==========================================================
@@ -107,11 +119,12 @@ def main():
     fs = FileSystem(security=security)
     raid = RAID5Controller()
     scanner = AntivirusScanner(fs, security)
+    mem = MemoryManager(filesystem=fs)
 
-    print("======================================")
-    print("   SIMULADOR DE SISTEMA DE ARQUIVOS")
-    print("   Etapas 1-3: Arquivos | E/S + RAID 5 | Segurança")
-    print("======================================")
+    print("==========================================================")
+    print("   SIMULADOR DE SISTEMA OPERACIONAL")
+    print("   Etapas 1-4: Arquivos | E/S + RAID | Segurança | Memória")
+    print("==========================================================")
 
     bootstrap(fs, security)
     print("\nFaça login para operar o sistema. Digite 'help' para os comandos.")
@@ -340,6 +353,107 @@ def main():
             elif command == "security_log":
                 security.require_session()
                 security.show_logs()
+
+            # ---------- Etapa 4: gerenciamento de memória ----------
+            elif command == "create_process":
+                security.require_session()
+
+                name = options.get("name") or (positional[0] if positional else None)
+                size_str = options.get("size") or (
+                    positional[1] if len(positional) > 1 else None
+                )
+                ptype = str(options.get("type", "normal")).lower()
+
+                if not name or not size_str:
+                    raise ValueError(
+                        'Uso: create_process --name "Processo" --size 512KB --type <critical|normal>'
+                    )
+
+                if ptype == "critical":
+                    security.require_kernel(
+                        f"alocação do processo crítico '{name}' na Área Reservada"
+                    )
+
+                mem.create_process(name, parse_size(size_str), ptype)
+
+            elif command == "terminate_process":
+                security.require_session()
+
+                name = options.get("name") or (positional[0] if positional else None)
+
+                if not name:
+                    raise ValueError('Uso: terminate_process --name "Processo"')
+
+                proc_info = mem.process_registry.get(name)
+                if proc_info and proc_info["type"] == "critical":
+                    security.require_kernel(
+                        f"encerramento do processo crítico '{name}'"
+                    )
+
+                mem.terminate_process(name)
+
+            elif command == "memory_status":
+                security.require_session()
+
+                if options.get("reserved"):
+                    mem.show_status("reserved")
+                elif options.get("virtual"):
+                    mem.show_status("virtual")
+                else:
+                    mem.show_status("all")
+
+            elif command == "memory_compact":
+                security.require_session()
+                security.require_kernel("compactação da Área Reservada da RAM")
+
+                if options.get("reserved") or not options:
+                    mem.compact_reserved()
+                else:
+                    raise ValueError("Uso: memory_compact --reserved")
+
+            elif command == "translate_address":
+                security.require_session()
+
+                proc = options.get("process") or (positional[0] if positional else None)
+                page_val = (
+                    options.get("page")
+                    if "page" in options
+                    else (positional[1] if len(positional) > 1 else None)
+                )
+
+                if not proc or page_val is None or isinstance(page_val, bool):
+                    raise ValueError(
+                        "Uso: translate_address --process <nome> --page <numero>"
+                    )
+
+                mem.translate_address(proc, int(page_val))
+
+            elif command == "execute_step":
+                security.require_session()
+
+                proc = options.get("process") or (positional[0] if positional else None)
+                instr = options.get("instruction") or (
+                    positional[1] if len(positional) > 1 else None
+                )
+
+                if not proc or not instr:
+                    raise ValueError(
+                        'Uso: execute_step --process <nome> --instruction "LOAD_DATA Página 2"'
+                    )
+
+                mem.execute_step(proc, instr)
+
+            elif command == "page_algorithm":
+                security.require_session()
+
+                algo = options.get("algorithm") or (
+                    positional[0] if positional else None
+                )
+
+                if not algo:
+                    raise ValueError("Uso: page_algorithm <LRU|SECOND_CHANCE>")
+
+                mem.virtual.set_algorithm(algo)
 
             # ---------- Etapas 1 e 2: arquivos, E/S e RAID ----------
             elif command == "mkdir":
